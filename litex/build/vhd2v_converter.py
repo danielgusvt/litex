@@ -245,7 +245,20 @@ class VHD2VConverter(Module):
                 # more than one instance of this core? rename top entity to avoid conflict
                 if inst_name != self._top_entity:
                     tools.replace_in_file(verilog_out, f"module {self._top_entity}", f"module {inst_name}")
-                tools.replace_in_file(verilog_out, f"\\", f"ghdl_") # FIXME: GHDL synth workaround, improve.
+
+                # Clean backslash-escaped Verilog identifiers produced by GHDL synthesis
+                import re
+                with open(verilog_out, 'r') as f:
+                    content = f.read()
+                pattern = re.compile(r'\\([a-zA-Z0-9_]+)\[([a-zA-Z0-9_]+)\]')
+                def _repl(m):
+                    base = m.group(1)
+                    field = m.group(2)
+                    return f"ghdl_{base}_{field}"
+                new_content = pattern.sub(_repl, content)
+                with open(verilog_out, 'w') as f:
+                    f.write(new_content)
+
 
             self._platform.add_source(verilog_out)
 
